@@ -303,6 +303,7 @@
         let jobsData = [];
         let inputMode = 'link';
         let chartInstance = null;
+        const generatingSet = new Set(); // tracks "id:type" pairs currently being generated
 
         // §§ SECTION: AI ENGINE — safeParseJson, callGemini (with model fallback), buildModelList
 
@@ -525,6 +526,7 @@
             try {
                 const res = await callGemini(prompt, sys, inputMode === 'link', true);
                 res.id = Date.now();
+                res.generated = {};
                 jobsData.unshift(res);
                 updateUI();
                 document.getElementById('jobLinkInput').value = "";
@@ -535,6 +537,21 @@
                 document.getElementById('jobLoader').classList.add('hidden');
                 analyzeBtn.disabled = false;
             }
+        }
+
+        function renderActionBtn(id, type, generateLabel, seeLabel, baseClass) {
+            if (generatingSet.has(`${id}:${type}`)) {
+                return `<button disabled class="${baseClass} opacity-50 cursor-not-allowed flex items-center justify-center gap-2"><span class="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span> Generating...</button>`;
+            }
+            const job = jobsData.find(j => j.id === id);
+            if (job?.generated?.[type]) {
+                return `
+                    <div class="flex flex-col items-stretch gap-1">
+                        <button onclick="aiAction(${id}, '${type}')" class="${baseClass} border-l-2 border-emerald-400 pl-2">${seeLabel}</button>
+                        <button onclick="regenerateAction(${id}, '${type}')" class="text-[8px] font-bold text-slate-300 hover:text-slate-500 transition-all uppercase tracking-widest text-center">↺ Regenerate</button>
+                    </div>`;
+            }
+            return `<button onclick="aiAction(${id}, '${type}')" class="${baseClass}">${generateLabel}</button>`;
         }
 
         function updateUI() {
@@ -560,10 +577,10 @@
                         </div>
                     </div>
                     <div class="flex flex-col gap-3 w-full md:w-auto">
-                        <button onclick="aiAction(${id}, 'adapt')" class="btn-primary text-[10px] tracking-[0.1em] py-4">Optimize my CV ✨</button>
-                        <button onclick="aiAction(${id}, 'letter')" class="btn-outline text-[10px] tracking-[0.1em] py-3 uppercase">Generate Cover Letter 📄</button>
-                        <button onclick="aiAction(${id}, 'prep')" class="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-all uppercase tracking-widest text-center py-2">Prepare for Interview 🎯</button>
-                        <button onclick="aiAction(${id}, 'roadmap')" class="text-[10px] font-black text-violet-600 hover:text-violet-800 transition-all uppercase tracking-widest text-center py-2">Study Roadmap 📚</button>
+                        ${renderActionBtn(id, 'adapt',   'Optimize my CV ✨',        'See CV Optimization ✨',  'btn-primary text-[10px] tracking-[0.1em] py-4')}
+                        ${renderActionBtn(id, 'letter',  'Generate Cover Letter 📄', 'See Cover Letter 📄',     'btn-outline text-[10px] tracking-[0.1em] py-3 uppercase')}
+                        ${renderActionBtn(id, 'prep',    'Prepare for Interview 🎯', 'See Interview Prep 🎯',   'text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-all uppercase tracking-widest text-center py-2')}
+                        ${renderActionBtn(id, 'roadmap', 'Study Roadmap 📚',         'See Study Roadmap 📚',    'text-[10px] font-black text-violet-600 hover:text-violet-800 transition-all uppercase tracking-widest text-center py-2')}
                         <button onclick="deleteJob(${id})" aria-label="Delete this analysis" class="text-[9px] font-bold text-slate-300 hover:text-rose-500 transition-all uppercase text-center mt-2">Delete Analysis 🗑️</button>
                     </div>
                 </div>
@@ -591,7 +608,16 @@
                 'prep':     'Tactical Interview Simulation',
                 'roadmap':  'Interview Study Roadmap'
             };
-            openModal(titles[type]);
+
+            // VIEW path — content already cached, open modal instantly
+            if (job.generated?.[type]) {
+                openModal(titles[type], job.generated[type]);
+                return;
+            }
+
+            // GENERATE path
+            generatingSet.add(`${id}:${type}`);
+            updateUI();
 
             let prompt = "";
             if (type === 'adapt') {
@@ -629,8 +655,22 @@ Keep the tone direct and actionable. No filler.`;
 
             try {
                 const res = await callGemini(prompt, "Senior IT Career Strategist.", false, false);
-                showAIResponse(res);
-            } catch (e) { showAIResponse("Error: " + e.message); }
+                if (!job.generated) job.generated = {};
+                job.generated[type] = res;
+                generatingSet.delete(`${id}:${type}`);
+                updateUI(); // persists to localStorage, re-renders button as "See"
+                openModal(titles[type], job.generated[type]);
+            } catch (e) {
+                generatingSet.delete(`${id}:${type}`);
+                updateUI();
+                showToast("Generation failed: " + e.message, 'error');
+            }
+        }
+
+        function regenerateAction(id, type) {
+            const job = jobsData.find(j => j.id === id);
+            if (job?.generated) delete job.generated[type];
+            aiAction(id, type);
         }
 
         function renderChart() {
@@ -659,12 +699,17 @@ Keep the tone direct and actionable. No filler.`;
 
         const aiModal = document.getElementById('aiModal');
 
-        function openModal(t) {
-            document.getElementById('modalTitle').textContent = t;
-            document.getElementById('modalContent').textContent = "Consulting AI tactics...";
-            document.getElementById('copyBtn').classList.add('hidden');
-            const isRoadmap = t === 'Interview Study Roadmap';
-            document.getElementById('copyBtn').textContent = isRoadmap ? 'Copy Roadmap' : 'Copy Strategy';
+        function openModal(title, content = null) {
+            document.getElementById('modalTitle').textContent = title;
+            const copyBtn = document.getElementById('copyBtn');
+            copyBtn.textContent = title === 'Interview Study Roadmap' ? 'Copy Roadmap' : 'Copy Strategy';
+            if (content) {
+                document.getElementById('modalContent').textContent = content;
+                copyBtn.classList.remove('hidden');
+            } else {
+                document.getElementById('modalContent').textContent = "Consulting AI tactics...";
+                copyBtn.classList.add('hidden');
+            }
             aiModal.showModal();
         }
         function closeModal() { aiModal.close(); }
