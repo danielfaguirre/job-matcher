@@ -82,6 +82,20 @@
                 <button onclick="initializeFlow()" id="initBtn" class="w-full btn-primary py-5 text-sm tracking-widest flex items-center justify-center gap-3">
                     VERIFY & CONFIGURE ✨
                 </button>
+
+                <!-- Security Notice -->
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-amber-500 text-base">🔒</span>
+                        <p class="text-[10px] font-black text-amber-700 uppercase tracking-[0.15em]">Privacy & Security Notice</p>
+                    </div>
+                    <ul class="space-y-1.5 text-[11px] text-amber-800 font-medium leading-relaxed">
+                        <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5 shrink-0">•</span> Your API key and CV are <strong>never stored</strong> — they live only in your browser's memory and are erased when you close or refresh the page.</li>
+                        <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5 shrink-0">•</span> Data is sent <strong>directly from your browser</strong> to Google's Gemini API over HTTPS. No third-party server is involved.</li>
+                        <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5 shrink-0">•</span> <strong>Do not share this page's URL</strong> while your session is active, as your API key would be accessible via browser DevTools to anyone with physical access to your device.</li>
+                        <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5 shrink-0">•</span> For extra protection, <strong>restrict your API key</strong> to this domain in the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" class="underline hover:text-amber-900 transition-colors">Google Cloud Console</a>.</li>
+                    </ul>
+                </div>
             </div>
 
             <!-- Feedback Panel -->
