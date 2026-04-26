@@ -7,24 +7,131 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- §§ SECTION: STYLES — global CSS, Tailwind @apply classes, animations, toast, dialog -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        
         :root {
             --primary: #4f46e5;
             --primary-hover: #4338ca;
+            --surface: #ffffff;
+            --surface-2: #f8f9fc;
+            --border: rgba(15,23,42,0.07);
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --match-bg: #f0fdf4;
+            --match-text: #166534;
+            --match-border: #bbf7d0;
+            --gap-bg: #fff7ed;
+            --gap-text: #9a3412;
+            --gap-border: #fed7aa;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
         }
 
         body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #f8fafc; 
-            color: #1e293b;
+            font-family: 'DM Sans', sans-serif; 
+            background-color: var(--surface-2); 
+            color: var(--text-primary);
         }
 
-        .card-job {
-            @apply bg-white border border-slate-100 rounded-[2rem] p-6 mb-6 transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1;
+        /* Affinity ring */
+        .affinity-ring-wrap {
+            position: relative;
+            width: 72px;
+            height: 72px;
+            flex-shrink: 0;
+        }
+        .affinity-ring-wrap svg {
+            transform: rotate(-90deg);
+        }
+        .affinity-ring-track {
+            fill: none;
+            stroke: #e2e8f0;
+            stroke-width: 4;
+        }
+        .affinity-ring-fill {
+            fill: none;
+            stroke-width: 4;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.8s var(--ease-out-expo);
+        }
+        .affinity-ring-label {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'DM Mono', monospace;
+            font-weight: 500;
+            font-size: 13px;
+            line-height: 1;
+            letter-spacing: -0.02em;
         }
 
+        /* Card redesign */
+        .card-job-outer {
+            padding: 3px;
+            border-radius: 1.75rem;
+            background: var(--border);
+            box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.04);
+            transition: box-shadow 0.3s var(--ease-out-expo), transform 0.3s var(--ease-out-expo);
+            margin-bottom: 1.25rem;
+        }
+        .card-job-outer:hover {
+            box-shadow: 0 2px 4px rgba(15,23,42,0.06), 0 12px 32px rgba(15,23,42,0.08);
+            transform: translateY(-2px);
+        }
+        .card-job-inner {
+            background: var(--surface);
+            border-radius: calc(1.75rem - 3px);
+            padding: 1.5rem;
+            overflow: hidden;
+        }
+
+        /* Insight rows */
+        .insight-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.625rem;
+            padding: 0.625rem 0.875rem;
+            border-radius: 0.875rem;
+            font-size: 0.8125rem;
+            line-height: 1.4;
+            font-weight: 500;
+        }
+        .insight-row.match {
+            background: var(--match-bg);
+            color: var(--match-text);
+        }
+        .insight-row.gap {
+            background: var(--gap-bg);
+            color: var(--gap-text);
+        }
+        .insight-icon {
+            flex-shrink: 0;
+            margin-top: 1px;
+            font-size: 0.75rem;
+        }
+
+        /* Action buttons inside cards */
+        .btn-primary {
+            @apply bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-5 rounded-2xl transition-colors active:scale-[0.98] shadow-sm;
+            transition-duration: 200ms;
+            transition-timing-function: var(--ease-out-expo);
+        }
+        .btn-outline {
+            @apply border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 font-semibold py-2.5 px-4 rounded-xl transition-colors active:scale-[0.98] text-xs;
+            transition-duration: 200ms;
+            transition-timing-function: var(--ease-out-expo);
+        }
+        .btn-ghost {
+            @apply text-slate-400 hover:text-slate-700 font-semibold py-2 px-3 rounded-xl transition-colors active:scale-[0.98] text-xs;
+            transition-duration: 150ms;
+        }
+
+        /* Spinner */
         .spinner { 
             border: 3px solid rgba(99, 102, 241, 0.1); 
             border-radius: 50%; 
@@ -35,16 +142,28 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        /* Card entry animation */
+        .fade-in {
+            animation: cardEnter 0.5s var(--ease-out-expo) both;
+        }
+        @keyframes cardEnter {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
 
+        /* Staggered card delays */
+        .fade-in:nth-child(1) { animation-delay: 0ms; }
+        .fade-in:nth-child(2) { animation-delay: 60ms; }
+        .fade-in:nth-child(3) { animation-delay: 120ms; }
+        .fade-in:nth-child(4) { animation-delay: 180ms; }
+        .fade-in:nth-child(n+5) { animation-delay: 240ms; }
+
+        /* Setup stepper */
         .step-active { color: var(--primary); font-weight: 800; border-left: 4px solid var(--primary); padding-left: 15px; }
-        .step-done { color: #10b981; border-left: 4px solid #10b981; padding-left: 15px; }
+        .step-done   { color: #10b981; border-left: 4px solid #10b981; padding-left: 15px; }
         .step-pending { color: #cbd5e1; border-left: 4px solid #e2e8f0; padding-left: 15px; }
 
-        .btn-primary { @apply bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-2xl transition-all active:scale-95 shadow-lg shadow-indigo-100; }
-        .btn-outline { @apply border-2 border-slate-200 hover:border-indigo-600 hover:text-indigo-600 font-bold py-3 px-6 rounded-2xl transition-all active:scale-95; }
-        
+        /* Badge (kept for compatibility) */
         .badge-affinity {
             @apply inline-flex items-center justify-center w-16 h-16 rounded-[1.5rem] text-white font-extrabold text-lg shadow-lg;
         }
@@ -79,13 +198,19 @@
         @keyframes slideIn { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
         @keyframes slideOut { from { opacity:1; transform: translateY(0); } to { opacity:0; transform: translateY(12px); } }
 
-        /* Force closed <dialog> elements to be hidden — Tailwind preflight can override the browser default */
+        /* Force closed <dialog> elements to be hidden */
         dialog:not([open]) { display: none; }
 
-        /* Native dialog backdrop */
         dialog::backdrop {
             background: rgba(2, 6, 23, 0.8);
             backdrop-filter: blur(12px);
+        }
+
+        /* Generating spinner inline */
+        .btn-generating {
+            opacity: 0.6;
+            cursor: wait;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -228,40 +353,39 @@
 
     <!-- §§ SECTION: DASHBOARD — main app shell: nav bar + job analyzer input + job cards grid -->
     <div id="mainApp">
-        <nav class="bg-white/80 backdrop-blur-xl sticky top-0 z-50 border-b border-slate-100 h-20">
-            <div class="max-w-7xl mx-auto px-6 h-full flex justify-between items-center">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-indigo-200">JM</div>
-                    <h1 class="font-black text-slate-900 tracking-tight text-xl">JobMatch <span class="text-indigo-600">Pro</span></h1>
+        <nav class="bg-white/90 backdrop-blur-xl sticky top-3 z-50 mx-3 rounded-[1.75rem] shadow-[0_2px_16px_rgba(15,23,42,0.08)] ring-1 ring-black/[0.06]">
+            <div class="max-w-7xl mx-auto px-5 h-16 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md shadow-indigo-200">JM</div>
+                    <h1 class="font-black text-slate-900 tracking-tight text-lg">JobMatch <span class="text-indigo-600">Pro</span></h1>
                 </div>
                 
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
                     <div class="hidden md:flex flex-col items-end">
                         <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active Engine</span>
                         <span id="activeModelTag" class="text-[10px] font-extrabold text-indigo-600 uppercase">---</span>
                     </div>
-                    <div class="h-10 w-px bg-slate-100 hidden md:block"></div>
-                    <div id="jobCountBadge" class="hidden items-center gap-2 bg-indigo-50 px-4 py-2 rounded-2xl border border-indigo-100">
+                    <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
+                    <div id="jobCountBadge" class="hidden items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
                         <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Analyzed</span>
                         <span id="jobCountNum" class="text-[11px] font-extrabold text-indigo-600">0</span>
                     </div>
-                    <div class="h-10 w-px bg-slate-100 hidden md:block"></div>
-                    <!-- Status pill — amber when not configured, green when configured -->
-                    <button id="setupNavBtn" onclick="openSettingsModal()" class="flex items-center gap-2.5 px-5 py-2.5 rounded-2xl border transition-all bg-amber-50 border-amber-200 hover:bg-amber-100" aria-label="Open setup">
-                        <span id="setupStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)] inline-block transition-all"></span>
-                        <span id="setupStatusLabel" class="text-[11px] font-extrabold text-amber-700 uppercase tracking-wider transition-all">Setup Required</span>
+                    <div class="h-8 w-px bg-slate-100 hidden md:block"></div>
+                    <button id="setupNavBtn" onclick="openSettingsModal()" class="flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors bg-amber-50 border-amber-200 hover:bg-amber-100" aria-label="Open setup">
+                        <span id="setupStatusDot" class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.7)] inline-block"></span>
+                        <span id="setupStatusLabel" class="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider">Setup</span>
                     </button>
-                    <div id="userNameBadge" class="hidden items-center gap-2.5 bg-slate-50 px-5 py-2.5 rounded-2xl border border-slate-200">
-                        <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                        <span id="userNameDisplay" class="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">---</span>
+                    <div id="userNameBadge" class="hidden items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
+                        <div class="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_6px_rgba(16,185,129,0.6)]"></div>
+                        <span id="userNameDisplay" class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider">---</span>
                     </div>
-                    <button onclick="clearSession()" class="text-slate-400 hover:text-amber-500 transition-all font-black text-[10px] uppercase tracking-[0.2em] ml-2">Clear</button>
-                    <button onclick="location.reload()" class="text-slate-400 hover:text-rose-500 transition-all font-black text-[10px] uppercase tracking-[0.2em]">Logout</button>
+                    <button onclick="clearSession()" class="text-slate-400 hover:text-amber-500 transition-colors font-black text-[9px] uppercase tracking-[0.2em]">Clear</button>
+                    <button onclick="location.reload()" class="text-slate-400 hover:text-rose-500 transition-colors font-black text-[9px] uppercase tracking-[0.2em]">Logout</button>
                 </div>
             </div>
         </nav>
 
-        <main class="max-w-7xl mx-auto px-6 py-10 space-y-10">
+        <main class="max-w-7xl mx-auto px-6 pt-6 pb-12 space-y-8">
             <!-- Analyzer Section -->
             <section class="bg-white p-10 rounded-[3rem] shadow-2xl shadow-slate-200/40 border border-slate-50 relative overflow-hidden">
                 <div id="jobLoader" class="hidden absolute inset-0 bg-white/90 backdrop-blur-md z-50 flex flex-col items-center justify-center gap-4">
@@ -832,7 +956,7 @@
 
         function renderActionBtn(id, type, generateLabel, seeLabel, baseClass) {
             if (!isConfigured) {
-                return `<button onclick="openSettingsModal()" class="${baseClass} opacity-60" title="Complete setup to unlock AI features">🔒 ${generateLabel}</button>`;
+                return `<button onclick="openSettingsModal()" class="${baseClass} opacity-60" title="Complete setup to unlock AI features">${generateLabel}</button>`;
             }
             if (generatingSet.has(`${id}:${type}`)) {
                 return `<button disabled class="${baseClass} opacity-50 cursor-not-allowed flex items-center justify-center gap-2"><span class="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span> Generating...</button>`;
@@ -840,42 +964,105 @@
             const job = jobsData.find(j => j.id === id);
             if (job?.generated?.[type]) {
                 return `
-                    <div class="flex flex-col items-stretch gap-1">
-                        <button onclick="aiAction(${id}, '${type}')" class="${baseClass} border-l-2 border-emerald-400 pl-2">${seeLabel}</button>
-                        <button onclick="regenerateAction(${id}, '${type}')" class="text-[8px] font-bold text-slate-300 hover:text-slate-500 transition-all uppercase tracking-widest text-center">↺ Regenerate</button>
+                    <div class="flex flex-col items-stretch gap-0.5">
+                        <button onclick="aiAction(${id}, '${type}')" class="${baseClass} ring-1 ring-emerald-300 ring-offset-0">${seeLabel} ✓</button>
+                        <button onclick="regenerateAction(${id}, '${type}')" class="text-[9px] font-semibold text-slate-300 hover:text-slate-500 transition-colors uppercase tracking-wider text-center py-0.5">↺ redo</button>
                     </div>`;
             }
             return `<button onclick="aiAction(${id}, '${type}')" class="${baseClass}">${generateLabel}</button>`;
+        }
+
+        function affinityRingSVG(afinidad) {
+            const r = 28;
+            const circ = 2 * Math.PI * r;
+            const pct = Math.min(100, Math.max(0, afinidad)) / 100;
+            const offset = circ * (1 - pct);
+            const stroke = afinidad >= 85 ? '#10b981' : (afinidad >= 60 ? '#4f46e5' : '#f97316');
+            const textColor = afinidad >= 85 ? '#166534' : (afinidad >= 60 ? '#4338ca' : '#c2410c');
+            return `
+                <div class="affinity-ring-wrap" aria-label="Affinity: ${afinidad}%">
+                    <svg width="72" height="72" viewBox="0 0 72 72">
+                        <circle class="affinity-ring-track" cx="36" cy="36" r="${r}"/>
+                        <circle class="affinity-ring-fill" cx="36" cy="36" r="${r}"
+                            stroke="${stroke}"
+                            stroke-dasharray="${circ}"
+                            stroke-dashoffset="${offset}"
+                        />
+                    </svg>
+                    <div class="affinity-ring-label" style="color:${textColor}">
+                        <span>${afinidad}%</span>
+                    </div>
+                </div>`;
         }
 
         function updateUI() {
             localStorage.setItem('jm_jobs', JSON.stringify(jobsData));
             const container = document.getElementById('jobsContainer');
             container.innerHTML = jobsData.map(job => {
-                const color = job.afinidad >= 85 ? 'bg-emerald-500' : (job.afinidad >= 60 ? 'bg-indigo-600' : 'bg-rose-500');
                 const id = Number(job.id);
                 const afinidad = Number(job.afinidad);
+                const affinityLabel = afinidad >= 85 ? 'Strong match' : (afinidad >= 60 ? 'Good fit' : 'Stretch role');
+                const affinityClass = afinidad >= 85 ? 'text-emerald-700 bg-emerald-50' : (afinidad >= 60 ? 'text-indigo-700 bg-indigo-50' : 'text-orange-700 bg-orange-50');
+
+                const matchRows = job.matches.slice(0, 4).map(m =>
+                    `<div class="insight-row match">
+                        <span class="insight-icon">✓</span>
+                        <span>${escapeHtml(m)}</span>
+                    </div>`
+                ).join('');
+
+                const gapRows = job.gaps.slice(0, 4).map(g =>
+                    `<div class="insight-row gap">
+                        <span class="insight-icon">△</span>
+                        <span>${escapeHtml(g)}</span>
+                    </div>`
+                ).join('');
+
                 return `
-                <div class="card-job flex flex-col md:flex-row items-center gap-8 fade-in">
-                    <div class="flex-shrink-0">
-                        <div class="badge-affinity ${color}" aria-label="Affinity score: ${afinidad}%">
-                            ${afinidad}%
+                <div class="card-job-outer fade-in">
+                    <div class="card-job-inner">
+
+                        <!-- Card header: score + company -->
+                        <div class="flex items-center gap-4 mb-5">
+                            ${affinityRingSVG(afinidad)}
+                            <div class="flex-grow min-w-0">
+                                <h4 class="text-lg font-bold text-slate-900 tracking-tight leading-tight truncate">${escapeHtml(job.empresa) || 'Company'}</h4>
+                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-0.5 truncate">${escapeHtml(job.rol) || 'Position'}</p>
+                                <span class="inline-block mt-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${affinityClass}">${affinityLabel}</span>
+                            </div>
+                            <button onclick="deleteJob(${id})" aria-label="Delete analysis" class="self-start text-slate-300 hover:text-rose-400 transition-colors p-1 rounded-lg hover:bg-rose-50 flex-shrink-0" title="Delete">
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 9h8l1-9"/></svg>
+                            </button>
                         </div>
-                    </div>
-                    <div class="flex-grow text-center md:text-left">
-                        <h4 class="text-xl font-black text-slate-900 tracking-tight">${escapeHtml(job.empresa) || 'Company'}</h4>
-                        <p class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(job.rol) || 'Position'}</p>
-                        <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-                            ${job.matches.slice(0,3).map(m => `<span class="bg-indigo-50 text-indigo-700 text-[9px] font-bold px-3 py-1 rounded-full uppercase">#${escapeHtml(m)}</span>`).join('')}
-                            ${job.gaps.slice(0,2).map(g => `<span class="bg-rose-50 text-rose-600 text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">Gap: ${escapeHtml(g)}</span>`).join('')}
+
+                        <!-- Insights: matches + gaps -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">What you bring</p>
+                                <div class="space-y-1.5">
+                                    ${matchRows || '<p class="text-xs text-slate-300 italic px-3">None identified</p>'}
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Gaps to close</p>
+                                <div class="space-y-1.5">
+                                    ${gapRows || '<p class="text-xs text-slate-300 italic px-3">No gaps — great fit!</p>'}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex flex-col gap-3 w-full md:w-auto">
-                        ${renderActionBtn(id, 'adapt',   'Optimize my CV ✨',        'See CV Optimization ✨',  'btn-primary text-[10px] tracking-[0.1em] py-4')}
-                        ${renderActionBtn(id, 'letter',  'Generate Cover Letter 📄', 'See Cover Letter 📄',     'btn-outline text-[10px] tracking-[0.1em] py-3 uppercase')}
-                        ${renderActionBtn(id, 'prep',    'Prepare for Interview 🎯', 'See Interview Prep 🎯',   'text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-all uppercase tracking-widest text-center py-2')}
-                        ${renderActionBtn(id, 'roadmap', 'Study Roadmap 📚',         'See Study Roadmap 📚',    'text-[10px] font-black text-violet-600 hover:text-violet-800 transition-all uppercase tracking-widest text-center py-2')}
-                        <button onclick="deleteJob(${id})" aria-label="Delete this analysis" class="text-[9px] font-bold text-slate-300 hover:text-rose-500 transition-all uppercase text-center mt-2">Delete Analysis 🗑️</button>
+
+                        <!-- Actions: primary + secondary row -->
+                        <div class="border-t border-slate-100 pt-4">
+                            <div class="mb-2.5">
+                                ${renderActionBtn(id, 'adapt', 'Optimize my CV', 'See CV Optimization', 'btn-primary w-full text-sm')}
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                ${renderActionBtn(id, 'letter',  'Cover Letter',    'Cover Letter',   'btn-outline w-full text-center')}
+                                ${renderActionBtn(id, 'prep',    'Interview Prep',  'Interview Prep', 'btn-outline w-full text-center')}
+                                ${renderActionBtn(id, 'roadmap', 'Study Roadmap',   'Study Roadmap',  'btn-outline w-full text-center')}
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             `}).join('');
