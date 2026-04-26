@@ -563,6 +563,7 @@
                         <button onclick="aiAction(${id}, 'adapt')" class="btn-primary text-[10px] tracking-[0.1em] py-4">Optimize my CV ✨</button>
                         <button onclick="aiAction(${id}, 'letter')" class="btn-outline text-[10px] tracking-[0.1em] py-3 uppercase">Generate Cover Letter 📄</button>
                         <button onclick="aiAction(${id}, 'prep')" class="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-all uppercase tracking-widest text-center py-2">Prepare for Interview 🎯</button>
+                        <button onclick="aiAction(${id}, 'roadmap')" class="text-[10px] font-black text-violet-600 hover:text-violet-800 transition-all uppercase tracking-widest text-center py-2">Study Roadmap 📚</button>
                         <button onclick="deleteJob(${id})" aria-label="Delete this analysis" class="text-[9px] font-bold text-slate-300 hover:text-rose-500 transition-all uppercase text-center mt-2">Delete Analysis 🗑️</button>
                     </div>
                 </div>
@@ -585,9 +586,10 @@
         async function aiAction(id, type) {
             const job = jobsData.find(j => j.id === id);
             const titles = {
-                'adapt': 'CV Optimization Strategy',
-                'letter': 'High-Impact Cover Letter',
-                'prep': 'Tactical Interview Simulation'
+                'adapt':    'CV Optimization Strategy',
+                'letter':   'High-Impact Cover Letter',
+                'prep':     'Tactical Interview Simulation',
+                'roadmap':  'Interview Study Roadmap'
             };
             openModal(titles[type]);
 
@@ -596,8 +598,33 @@
                 prompt = `I have ${job.afinidad}% affinity for ${job.rol} at ${job.empresa}. Suggest 3 technical changes to my CV to cover these gaps: ${job.gaps.join(', ')}. Write a powerful summary.`;
             } else if (type === 'letter') {
                 prompt = `Write a persuasive Cover Letter for ${job.empresa}. Use my Senior profile and highlight strengths: ${job.matches.join(', ')}.`;
-            } else {
+            } else if (type === 'prep') {
                 prompt = `Simulate interview for ${job.empresa}. Ask 3 hard questions about my technical gaps (${job.gaps.join(', ')}) and provide the ideal STAR method answer.`;
+            } else if (type === 'roadmap') {
+                prompt = `Create a personalized 3-week interview preparation roadmap for the role of ${job.rol} at ${job.empresa}.
+
+My profile: seniority ${userProfileBrain.seniority || 'Senior'}, top skills: ${(userProfileBrain.topSkills || []).join(', ')}.
+Skill gaps to close: ${job.gaps.join(', ')}.
+Existing strengths (don't repeat): ${job.matches.join(', ')}.
+
+Structure the roadmap exactly like this:
+
+WEEK 1 — Foundation
+For each gap topic assigned to this week:
+  - Topic name
+  - Why it matters for this role
+  - 2–3 specific resources (course name + platform, or official doc URL)
+  - 2 mock technical questions with the ideal answer approach
+
+WEEK 2 — Depth & Practice
+Same structure as Week 1 for remaining gaps.
+
+WEEK 3 — Interview Simulation & Polish
+  - 1 system design or architecture question relevant to ${job.empresa}'s domain, with a model answer outline
+  - 3 behavioral questions using the STAR method tailored to ${job.rol}
+  - A 5-point "day before interview" checklist
+
+Keep the tone direct and actionable. No filler.`;
             }
 
             try {
@@ -636,6 +663,8 @@
             document.getElementById('modalTitle').textContent = t;
             document.getElementById('modalContent').textContent = "Consulting AI tactics...";
             document.getElementById('copyBtn').classList.add('hidden');
+            const isRoadmap = t === 'Interview Study Roadmap';
+            document.getElementById('copyBtn').textContent = isRoadmap ? 'Copy Roadmap' : 'Copy Strategy';
             aiModal.showModal();
         }
         function closeModal() { aiModal.close(); }
