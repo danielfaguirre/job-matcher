@@ -6,6 +6,8 @@
     <title>JobMatch Pro v9.5 - Global Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- §§ SECTION: STYLES — global CSS, Tailwind @apply classes, animations, toast, dialog -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
@@ -89,10 +91,10 @@
 </head>
 <body class="antialiased min-h-screen">
 
-    <!-- Toast Notifications -->
+    <!-- §§ SECTION: TOAST — fixed notification container, injected by showToast() -->
     <div id="toastContainer" role="status" aria-live="polite"></div>
 
-
+    <!-- §§ SECTION: ONBOARDING — full-screen setup overlay: API key + CV upload + progress steps -->
     <div id="setupLayer" class="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white w-full max-w-xl rounded-[3rem] shadow-2xl p-10 space-y-8 my-auto fade-in">
             <div class="text-center">
@@ -154,7 +156,7 @@
         </div>
     </div>
 
-    <!-- MAIN DASHBOARD -->
+    <!-- §§ SECTION: DASHBOARD — main app shell: nav bar + job analyzer input + job cards grid -->
     <div id="mainApp" class="hidden opacity-0">
         <nav class="bg-white/80 backdrop-blur-xl sticky top-0 z-50 border-b border-slate-100 h-20">
             <div class="max-w-7xl mx-auto px-6 h-full flex justify-between items-center">
@@ -178,7 +180,8 @@
                         <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
                         <span id="userNameDisplay" class="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">Loading DNA...</span>
                     </div>
-                    <button onclick="location.reload()" class="text-slate-400 hover:text-rose-500 transition-all font-black text-[10px] uppercase tracking-[0.2em] ml-2">Logout</button>
+                    <button onclick="clearSession()" class="text-slate-400 hover:text-amber-500 transition-all font-black text-[10px] uppercase tracking-[0.2em] ml-2">Clear</button>
+                    <button onclick="location.reload()" class="text-slate-400 hover:text-rose-500 transition-all font-black text-[10px] uppercase tracking-[0.2em]">Logout</button>
                 </div>
             </div>
         </nav>
@@ -250,7 +253,7 @@
         </main>
     </div>
 
-    <!-- RESPONSE MODAL -->
+    <!-- §§ SECTION: MODAL — native <dialog> for AI-generated content (CV / cover letter / interview) -->
     <dialog id="aiModal" aria-labelledby="modalTitle" class="bg-white w-full max-w-4xl rounded-[3.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden p-0 border-0 m-auto">
         <div class="p-10 border-b border-slate-100 flex justify-between items-center bg-indigo-50/40">
             <div class="flex flex-col">
@@ -267,7 +270,7 @@
     </dialog>
 
     <script>
-        // --- UTILITIES ---
+        // §§ SECTION: UTILITIES — escapeHtml, showToast
 
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
@@ -292,13 +295,16 @@
             }, duration);
         }
 
-        // --- RESILIENCE ENGINE ---
+        // §§ SECTION: STATE — shared session variables
+
         let apiKey = "";
         let modelPriorityList = [];
         let userProfileBrain = null;
         let jobsData = [];
         let inputMode = 'link';
         let chartInstance = null;
+
+        // §§ SECTION: AI ENGINE — safeParseJson, callGemini (with model fallback), buildModelList
 
         function safeParseJson(text) {
             try {
@@ -367,7 +373,7 @@
             } catch (e) { return ["gemini-1.5-flash"]; }
         }
 
-        // --- ONBOARDING FLOW ---
+        // §§ SECTION: ONBOARDING — CV file validation, initializeFlow, setStep, startDashboard
 
         const cvInput = document.getElementById('cvFile');
         cvInput.onchange = (e) => {
@@ -465,10 +471,25 @@
             setTimeout(() => main.classList.add('opacity-100'), 50);
             // AI returns "name"; fall back to "nombre" for legacy responses
             document.getElementById('userNameDisplay').textContent = userProfileBrain.name || userProfileBrain.nombre || "User";
+
+            // Rehydrate jobs saved from a previous session
+            try {
+                const saved = localStorage.getItem('jm_jobs');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        jobsData = parsed;
+                        showToast(`Restored ${parsed.length} job${parsed.length !== 1 ? 's' : ''} from your last session.`, 'success', 4000);
+                    }
+                }
+            } catch (e) {
+                localStorage.removeItem('jm_jobs');
+            }
+
             updateUI();
         }
 
-        // --- DASHBOARD CORE ---
+        // §§ SECTION: DASHBOARD — toggleInput, analyzeJob, updateUI, renderChart
 
         function toggleInput(mode) {
             inputMode = mode;
@@ -517,6 +538,7 @@
         }
 
         function updateUI() {
+            localStorage.setItem('jm_jobs', JSON.stringify(jobsData));
             const container = document.getElementById('jobsContainer');
             container.innerHTML = jobsData.map(job => {
                 const color = job.afinidad >= 85 ? 'bg-emerald-500' : (job.afinidad >= 60 ? 'bg-indigo-600' : 'bg-rose-500');
@@ -606,7 +628,7 @@
             });
         }
 
-        // --- MODAL (native <dialog>) ---
+        // §§ SECTION: AI ACTIONS — aiAction (CV optimize / cover letter / interview), openModal, closeModal, copyBtn, deleteJob, exportCSV
 
         const aiModal = document.getElementById('aiModal');
 
@@ -650,6 +672,11 @@
         };
 
         function deleteJob(id) { jobsData = jobsData.filter(j => j.id !== id); updateUI(); }
+
+        function clearSession() {
+            localStorage.removeItem('jm_jobs');
+            location.reload();
+        }
 
         function exportCSV() {
             function csvCell(val) {
