@@ -542,6 +542,21 @@
         }
 
         function openSettingsModal() {
+            // Reset modal to input state on every open
+            document.getElementById('setupInputs').classList.remove('hidden');
+            document.getElementById('feedbackContainer').classList.add('hidden');
+            document.getElementById('saveOptions').classList.add('hidden');
+            document.getElementById('saveProfileCheck').closest('label').classList.remove('hidden');
+            document.getElementById('saveKeyCheck').closest('label').classList.remove('hidden');
+            document.getElementById('pinSetupBlock').classList.add('hidden');
+            document.getElementById('saveProfileCheck').checked = false;
+            document.getElementById('saveKeyCheck').checked = false;
+            // Reset step indicators
+            [1,2,3,4].forEach(i => setStep(i, 'pending'));
+            const spinner = document.querySelector('.spinner');
+            if (spinner) spinner.classList.remove('hidden');
+            document.getElementById('currentActionText').textContent = 'Processing...';
+            document.getElementById('errorMessage').classList.add('hidden');
             document.getElementById('settingsModal').showModal();
         }
 
@@ -593,9 +608,11 @@
 
         function setStep(id, status) {
             const el = document.getElementById(`step-${id}`);
+            const labels = ['', 'Validating API Key...', 'Scanning available models...', 'Analyzing professional DNA...', 'Activating Tactical Dashboard...'];
             el.className = `text-xs font-bold transition-all ${status === 'active' ? 'step-active' : (status === 'done' ? 'step-done' : 'step-pending')}`;
-            if (status === 'active') el.innerHTML = `<span class="text-indigo-600">⚡</span> ${el.textContent.replace(/[○✔⚡]/g, "").trim()}`;
-            if (status === 'done') el.innerHTML = `<span class="text-emerald-500">✔</span> ${el.textContent.replace(/[○✔⚡]/g, "").trim()}`;
+            if (status === 'pending') { el.textContent = labels[id]; return; }
+            if (status === 'active') el.innerHTML = `<span class="text-indigo-600">⚡</span> ${labels[id]}`;
+            if (status === 'done') el.innerHTML = `<span class="text-emerald-500">✔</span> ${labels[id]}`;
         }
 
         async function initializeFlow() {
@@ -663,10 +680,27 @@
                 }
 
                 setStep(4, 'active');
-                // Reveal the save-options panel — user chooses before launch
-                document.getElementById('saveOptions').classList.remove('hidden');
                 document.querySelector('.spinner').classList.add('hidden');
                 document.getElementById('currentActionText').textContent = 'Almost ready!';
+
+                // If both profile and key are already saved, nothing left to configure — launch immediately
+                if (hasCachedProfile && hasSavedKey) {
+                    setTimeout(unlockDashboard, 400);
+                    return;
+                }
+
+                // Otherwise show only the options the user hasn't already opted into
+                const saveOpts = document.getElementById('saveOptions');
+                if (hasCachedProfile) {
+                    // Profile already saved — hide that checkbox row
+                    document.getElementById('saveProfileCheck').closest('label').classList.add('hidden');
+                }
+                if (hasSavedKey) {
+                    // Key already encrypted — hide that checkbox row and PIN field
+                    document.getElementById('saveKeyCheck').closest('label').classList.add('hidden');
+                    document.getElementById('pinSetupBlock').classList.add('hidden');
+                }
+                saveOpts.classList.remove('hidden');
             } catch (e) { showError(e.message); }
         }
 
