@@ -1,0 +1,7 @@
+/.agents
+/node_modules
+/package-lock.json
+/package.json
+/AGENTS.md
+/skills-lock.json
+/ship.sh
