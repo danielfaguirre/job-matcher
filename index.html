@@ -106,18 +106,44 @@
             </div>
 
             <div id="setupInputs" class="space-y-6">
-                <div>
+                <!-- API key block — switches to PIN unlock when a saved encrypted key is detected -->
+                <div id="apiKeyBlock">
                     <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2">1. Google Studio API Key</label>
                     <input type="password" id="apiKeyInput" placeholder="Paste your secure key here..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-mono text-sm shadow-sm">
                 </div>
 
-                <div class="border-2 border-dashed border-slate-200 rounded-[2rem] p-10 text-center hover:border-indigo-400 hover:bg-indigo-50/30 transition-all relative group cursor-pointer" id="dropZone" role="button" aria-label="Upload your CV — click to browse" tabindex="0">
-                    <input type="file" id="cvFile" class="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.txt,.jpg,.png">
-                    <div id="fileInfo" class="space-y-3">
-                        <span class="text-5xl transition-transform group-hover:scale-110 inline-block">📄</span>
-                        <p class="text-sm font-extrabold text-slate-700 uppercase">2. Your Master CV</p>
-                        <p class="text-[11px] text-slate-400 font-medium">Supports PDF, JPG, and Plain Text.</p>
+                <!-- PIN unlock block — shown only when jm_key_enc exists -->
+                <div id="pinUnlockBlock" class="hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">1. Unlock with your PIN</label>
+                        <button onclick="forgetSavedKey()" class="text-[9px] font-black text-rose-400 hover:text-rose-600 uppercase tracking-widest transition-all">Forget saved key</button>
                     </div>
+                    <input type="password" id="pinInput" inputmode="numeric" maxlength="6" placeholder="Enter your 4–6 digit PIN…" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-mono text-sm shadow-sm tracking-[0.4em]">
+                    <p id="pinError" class="hidden text-[10px] text-rose-600 font-bold mt-2 pl-1">Wrong PIN — please try again.</p>
+                </div>
+
+                <!-- CV upload — hidden when a cached profile is detected -->
+                <div id="cvUploadBlock">
+                    <div class="border-2 border-dashed border-slate-200 rounded-[2rem] p-10 text-center hover:border-indigo-400 hover:bg-indigo-50/30 transition-all relative group cursor-pointer" id="dropZone" role="button" aria-label="Upload your CV — click to browse" tabindex="0">
+                        <input type="file" id="cvFile" class="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.txt,.jpg,.png">
+                        <div id="fileInfo" class="space-y-3">
+                            <span class="text-5xl transition-transform group-hover:scale-110 inline-block">📄</span>
+                            <p class="text-sm font-extrabold text-slate-700 uppercase">2. Your Master CV</p>
+                            <p class="text-[11px] text-slate-400 font-medium">Supports PDF, JPG, and Plain Text.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cached profile welcome banner — shown when jm_profile exists -->
+                <div id="cachedProfileBlock" class="hidden bg-emerald-50 border border-emerald-200 rounded-[2rem] p-6 flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">👋</span>
+                        <div>
+                            <p class="text-sm font-black text-emerald-800">Welcome back, <span id="cachedProfileName"></span>!</p>
+                            <p class="text-[10px] text-emerald-600 font-medium mt-0.5">Your professional profile is cached — CV upload skipped.</p>
+                        </div>
+                    </div>
+                    <button onclick="clearCachedProfile()" class="text-[9px] font-black text-emerald-500 hover:text-rose-500 uppercase tracking-widest transition-all shrink-0">Change CV</button>
                 </div>
 
                 <button onclick="initializeFlow()" id="initBtn" class="w-full btn-primary py-5 text-sm tracking-widest flex items-center justify-center gap-3">
@@ -131,7 +157,7 @@
                         <p class="text-[10px] font-black text-amber-700 uppercase tracking-[0.15em]">Privacy & Security Notice</p>
                     </div>
                     <ul class="space-y-1.5 text-[11px] text-amber-800 font-medium leading-relaxed">
-                        <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5 shrink-0">•</span> Your API key and CV are <strong>never stored</strong> — they live only in your browser's memory and are erased when you close or refresh the page.</li>
+                        <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5 shrink-0">•</span> Your API key and CV are <strong>never stored in plaintext</strong>. If you choose to save them, your key is AES-256 encrypted behind your PIN and your CV profile contains only extracted metadata — no raw file data.</li>
                         <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5 shrink-0">•</span> Data is sent <strong>directly from your browser</strong> to Google's Gemini API over HTTPS. No third-party server is involved.</li>
                         <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5 shrink-0">•</span> <strong>Do not share this page's URL</strong> while your session is active, as your API key would be accessible via browser DevTools to anyone with physical access to your device.</li>
                         <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5 shrink-0">•</span> For extra protection, <strong>restrict your API key</strong> to this domain in the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" class="underline hover:text-amber-900 transition-colors">Google Cloud Console</a>.</li>
@@ -151,6 +177,40 @@
                     <div id="step-3" class="text-xs font-bold step-pending transition-all flex items-center gap-3">Analyzing professional DNA...</div>
                     <div id="step-4" class="text-xs font-bold step-pending transition-all flex items-center gap-3">Activating Tactical Dashboard...</div>
                 </div>
+
+                <!-- Post-setup opt-in options — revealed after all steps complete -->
+                <div id="saveOptions" class="hidden space-y-4 border-t border-slate-100 pt-6">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Optional: save time on your next visit</p>
+
+                    <!-- CV Profile Cache opt-in -->
+                    <label class="flex items-start gap-3 cursor-pointer group">
+                        <input type="checkbox" id="saveProfileCheck" class="mt-0.5 accent-indigo-600 w-4 h-4 shrink-0">
+                        <div>
+                            <p class="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">Remember my profile on this device</p>
+                            <p class="text-[10px] text-slate-400 font-medium mt-0.5">Skips CV re-upload on return visits. Stores only extracted skills metadata — no raw file data.</p>
+                        </div>
+                    </label>
+
+                    <!-- Encrypted API key opt-in -->
+                    <label class="flex items-start gap-3 cursor-pointer group">
+                        <input type="checkbox" id="saveKeyCheck" class="mt-0.5 accent-indigo-600 w-4 h-4 shrink-0" onchange="togglePinSetupField(this.checked)">
+                        <div>
+                            <p class="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">Save API key encrypted with a PIN</p>
+                            <p class="text-[10px] text-slate-400 font-medium mt-0.5">AES-256 encrypted in your browser. Next visit you only type your PIN — key never stored in plain text.</p>
+                        </div>
+                    </label>
+
+                    <!-- PIN setup field — shown when above checkbox is ticked -->
+                    <div id="pinSetupBlock" class="hidden pl-7 space-y-2">
+                        <input type="password" id="pinSetupInput" inputmode="numeric" maxlength="6" placeholder="Choose a 4–6 digit PIN…" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-mono text-sm tracking-[0.4em]">
+                        <p class="text-[9px] text-slate-400 font-medium">This PIN is never stored — it only unlocks your encrypted key. If you forget it, use "Forget saved key."</p>
+                    </div>
+
+                    <button onclick="applyAndLaunch()" id="launchBtn" class="w-full btn-primary py-4 text-xs tracking-widest">
+                        LAUNCH DASHBOARD →
+                    </button>
+                </div>
+
                 <div id="errorMessage" class="hidden text-xs text-rose-600 font-bold bg-rose-50 p-6 rounded-3xl border border-rose-100 leading-relaxed shadow-sm"></div>
             </div>
         </div>
@@ -409,6 +469,84 @@
             if (e.key === 'Enter' || e.key === ' ') cvInput.click();
         });
 
+        // §§ SECTION: CRYPTO — encryptKey / decryptKey using Web Crypto PBKDF2 + AES-GCM
+
+        async function encryptKey(pin, plaintext) {
+            const enc = new TextEncoder();
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv   = crypto.getRandomValues(new Uint8Array(12));
+            const keyMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+            const aesKey  = await crypto.subtle.deriveKey(
+                { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+                keyMat, { name: 'AES-GCM', length: 256 }, false, ['encrypt']
+            );
+            const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, enc.encode(plaintext));
+            // pack salt + iv + ciphertext as base64
+            const combined = new Uint8Array(salt.byteLength + iv.byteLength + cipherBuf.byteLength);
+            combined.set(salt, 0);
+            combined.set(iv, salt.byteLength);
+            combined.set(new Uint8Array(cipherBuf), salt.byteLength + iv.byteLength);
+            return btoa(String.fromCharCode(...combined));
+        }
+
+        async function decryptKey(pin, blob) {
+            const enc = new TextEncoder();
+            const dec = new TextDecoder();
+            const combined = Uint8Array.from(atob(blob), c => c.charCodeAt(0));
+            const salt   = combined.slice(0, 16);
+            const iv     = combined.slice(16, 28);
+            const cipher = combined.slice(28);
+            const keyMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+            const aesKey  = await crypto.subtle.deriveKey(
+                { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+                keyMat, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+            );
+            const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, cipher);
+            return dec.decode(plainBuf);
+        }
+
+        // §§ SECTION: ONBOARDING HELPERS — page-load detection, cached profile / PIN UI handlers
+
+        function togglePinSetupField(show) {
+            document.getElementById('pinSetupBlock').classList.toggle('hidden', !show);
+        }
+
+        function forgetSavedKey() {
+            localStorage.removeItem('jm_key_enc');
+            document.getElementById('pinUnlockBlock').classList.add('hidden');
+            document.getElementById('apiKeyBlock').classList.remove('hidden');
+            document.getElementById('pinError').classList.add('hidden');
+        }
+
+        function clearCachedProfile() {
+            localStorage.removeItem('jm_profile');
+            document.getElementById('cachedProfileBlock').classList.add('hidden');
+            document.getElementById('cvUploadBlock').classList.remove('hidden');
+        }
+
+        // On every page load, check for saved encrypted key and/or cached profile
+        (function detectSavedData() {
+            const hasEncKey = !!localStorage.getItem('jm_key_enc');
+            const savedProfile = localStorage.getItem('jm_profile');
+
+            if (hasEncKey) {
+                document.getElementById('apiKeyBlock').classList.add('hidden');
+                document.getElementById('pinUnlockBlock').classList.remove('hidden');
+            }
+
+            if (savedProfile) {
+                try {
+                    const prof = JSON.parse(savedProfile);
+                    const name = prof.name || prof.nombre || 'You';
+                    document.getElementById('cachedProfileName').textContent = name;
+                    document.getElementById('cvUploadBlock').classList.add('hidden');
+                    document.getElementById('cachedProfileBlock').classList.remove('hidden');
+                } catch (e) {
+                    localStorage.removeItem('jm_profile');
+                }
+            }
+        })();
+
         function setStep(id, status) {
             const el = document.getElementById(`step-${id}`);
             el.className = `text-xs font-bold transition-all ${status === 'active' ? 'step-active' : (status === 'done' ? 'step-done' : 'step-pending')}`;
@@ -417,10 +555,29 @@
         }
 
         async function initializeFlow() {
-            apiKey = document.getElementById('apiKeyInput').value.trim();
+            const hasSavedKey = !!localStorage.getItem('jm_key_enc');
+            const hasCachedProfile = !!localStorage.getItem('jm_profile');
+
+            // Resolve API key
+            if (hasSavedKey) {
+                const pin = document.getElementById('pinInput').value.trim();
+                if (!pin) { showToast("Please enter your PIN to unlock your saved key.", 'warning'); return; }
+                try {
+                    apiKey = await decryptKey(pin, localStorage.getItem('jm_key_enc'));
+                } catch {
+                    document.getElementById('pinError').classList.remove('hidden');
+                    return;
+                }
+                document.getElementById('pinError').classList.add('hidden');
+            } else {
+                apiKey = document.getElementById('apiKeyInput').value.trim();
+                if (!apiKey) { showToast("Please provide your API Key.", 'warning'); return; }
+            }
+
+            // Require CV unless a cached profile is available
             const file = cvInput.files[0];
-            if (!apiKey || !file) {
-                showToast("Please provide both your API Key and CV file.", 'warning');
+            if (!hasCachedProfile && !file) {
+                showToast("Please upload your CV file.", 'warning');
                 return;
             }
 
@@ -437,20 +594,63 @@
                 document.getElementById('activeModelTag').textContent = modelPriorityList[0];
                 setStep(2, 'done');
 
-                setStep(3, 'active');
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = async () => {
-                    try {
-                        const sys = "Senior Talent Analyzer. Extract professional DNA from CV.";
-                        const prompt = "Analyze this CV. Return JSON with: name, seniority, topSkills (array), perfilBase (string).";
-                        userProfileBrain = await callGemini(prompt, sys, false, true, { base64: reader.result.split(',')[1], type: file.type || "application/pdf" });
-                        setStep(3, 'done');
-                        setStep(4, 'active');
-                        setTimeout(startDashboard, 600);
-                    } catch (e) { showError(e.message); }
-                };
+                if (hasCachedProfile) {
+                    // Skip CV analysis — restore profile from cache
+                    userProfileBrain = JSON.parse(localStorage.getItem('jm_profile'));
+                    setStep(3, 'done');
+                    const step3El = document.getElementById('step-3');
+                    step3El.innerHTML = `<span class="text-emerald-500">✔</span> Profile loaded from cache`;
+                } else {
+                    setStep(3, 'active');
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    await new Promise((resolve, reject) => {
+                        reader.onload = async () => {
+                            try {
+                                const sys = "Senior Talent Analyzer. Extract professional DNA from CV.";
+                                const prompt = "Analyze this CV. Return JSON with: name, seniority, topSkills (array), perfilBase (string).";
+                                userProfileBrain = await callGemini(prompt, sys, false, true, { base64: reader.result.split(',')[1], type: file.type || "application/pdf" });
+                                setStep(3, 'done');
+                                resolve();
+                            } catch (e) { reject(e); }
+                        };
+                        reader.onerror = () => reject(new Error("File read error."));
+                    });
+                }
+
+                setStep(4, 'active');
+                // Reveal the save-options panel — user chooses before launch
+                document.getElementById('saveOptions').classList.remove('hidden');
+                document.querySelector('.spinner').classList.add('hidden');
+                document.getElementById('currentActionText').textContent = 'Almost ready!';
             } catch (e) { showError(e.message); }
+        }
+
+        async function applyAndLaunch() {
+            const saveProfile = document.getElementById('saveProfileCheck').checked;
+            const saveKey     = document.getElementById('saveKeyCheck').checked;
+
+            if (saveProfile) {
+                localStorage.setItem('jm_profile', JSON.stringify(userProfileBrain));
+            }
+
+            if (saveKey && !localStorage.getItem('jm_key_enc')) {
+                const pin = document.getElementById('pinSetupInput')?.value.trim();
+                if (!pin || pin.length < 4) {
+                    showToast("Please enter a PIN of at least 4 digits before saving.", 'warning');
+                    return;
+                }
+                try {
+                    const blob = await encryptKey(pin, apiKey);
+                    localStorage.setItem('jm_key_enc', blob);
+                    showToast("API key saved encrypted. Use your PIN on your next visit.", 'success', 4000);
+                } catch (e) {
+                    showToast("Could not encrypt API key: " + e.message, 'error');
+                    return;
+                }
+            }
+
+            setTimeout(startDashboard, 300);
         }
 
         function showError(msg) {
@@ -748,6 +948,7 @@ Keep the tone direct and actionable. No filler.`;
         function deleteJob(id) { jobsData = jobsData.filter(j => j.id !== id); updateUI(); }
 
         function clearSession() {
+            // Only clear the current job analyses; the saved profile and encrypted key are intentional
             localStorage.removeItem('jm_jobs');
             location.reload();
         }
