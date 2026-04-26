@@ -213,6 +213,16 @@
     <script>
         // --- RESILIENCE ENGINE ---
         let apiKey = "";
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
         let modelPriorityList = []; 
         let currentModelIndex = 0;
         let userProfileBrain = null;
@@ -298,9 +308,29 @@
         const cvInput = document.getElementById('cvFile');
         cvInput.onchange = (e) => {
             const file = e.target.files[0];
-            if (file) {
-                document.getElementById('fileInfo').innerHTML = `<span class="text-5xl">✅</span><p class="text-xs font-black text-indigo-600 mt-4 uppercase">${file.name}</p>`;
+            if (!file) return;
+
+            const allowed = ['application/pdf', 'text/plain', 'image/jpeg', 'image/png'];
+            const maxMB = 10;
+            if (!allowed.includes(file.type)) {
+                alert('Unsupported file type. Please upload a PDF, TXT, JPG, or PNG.');
+                cvInput.value = '';
+                return;
             }
+            if (file.size > maxMB * 1024 * 1024) {
+                alert(`File is too large. Maximum size is ${maxMB}MB.`);
+                cvInput.value = '';
+                return;
+            }
+
+            const nameEl = document.createElement('p');
+            nameEl.className = 'text-xs font-black text-indigo-600 mt-4 uppercase';
+            nameEl.textContent = file.name;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'space-y-3';
+            wrapper.innerHTML = '<span class="text-5xl">✅</span>';
+            wrapper.appendChild(nameEl);
+            document.getElementById('fileInfo').replaceChildren(wrapper);
         };
 
         function setStep(id, status) {
@@ -378,6 +408,19 @@
         async function analyzeJob() {
             const val = inputMode === 'link' ? document.getElementById('jobLinkInput').value.trim() : document.getElementById('jobTextInput').value.trim();
             if (!val) return;
+
+            if (inputMode === 'link') {
+                try {
+                    const parsed = new URL(val);
+                    if (!['http:', 'https:'].includes(parsed.protocol)) {
+                        alert('Please enter a valid http/https URL.');
+                        return;
+                    }
+                } catch {
+                    alert('Please enter a valid URL (e.g. https://www.linkedin.com/jobs/view/...)');
+                    return;
+                }
+            }
             document.getElementById('jobLoader').classList.remove('hidden');
             const sys = `IT Job Matcher. Base Profile: ${JSON.stringify(userProfileBrain)}.`;
             const prompt = `Analyze job: ${val}. Respond with JSON: { empresa, rol, afinidad (0-100), matches (array), gaps (array) }.`;
@@ -396,27 +439,29 @@
             const container = document.getElementById('jobsContainer');
             container.innerHTML = jobsData.map(job => {
                 const color = job.afinidad >= 85 ? 'bg-emerald-500' : (job.afinidad >= 60 ? 'bg-indigo-600' : 'bg-rose-500');
+                const id = Number(job.id);
+                const afinidad = Number(job.afinidad);
                 return `
                 <div class="card-job flex flex-col md:flex-row items-center gap-8 fade-in">
                     <div class="flex-shrink-0">
                         <div class="badge-affinity ${color}">
-                            ${job.afinidad}%
+                            ${afinidad}%
                         </div>
                     </div>
                     <div class="flex-grow text-center md:text-left">
-                        <h4 class="text-xl font-black text-slate-900 tracking-tight">${job.empresa || 'Company'}</h4>
-                        <p class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1">${job.rol || 'Position'}</p>
+                        <h4 class="text-xl font-black text-slate-900 tracking-tight">${escapeHtml(job.empresa) || 'Company'}</h4>
+                        <p class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(job.rol) || 'Position'}</p>
                         
                         <div class="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-                            ${job.matches.slice(0,3).map(m => `<span class="bg-indigo-50 text-indigo-700 text-[9px] font-bold px-3 py-1 rounded-full uppercase">#${m}</span>`).join('')}
-                            ${job.gaps.slice(0,2).map(g => `<span class="bg-rose-50 text-rose-600 text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">Gap: ${g}</span>`).join('')}
+                            ${job.matches.slice(0,3).map(m => `<span class="bg-indigo-50 text-indigo-700 text-[9px] font-bold px-3 py-1 rounded-full uppercase">#${escapeHtml(m)}</span>`).join('')}
+                            ${job.gaps.slice(0,2).map(g => `<span class="bg-rose-50 text-rose-600 text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">Gap: ${escapeHtml(g)}</span>`).join('')}
                         </div>
                     </div>
                     <div class="flex flex-col gap-3 w-full md:w-auto">
-                        <button onclick="aiAction(${job.id}, 'adapt')" class="btn-primary text-[10px] tracking-[0.1em] py-4">Optimize my CV ✨</button>
-                        <button onclick="aiAction(${job.id}, 'letter')" class="btn-outline text-[10px] tracking-[0.1em] py-3 uppercase">Generate Cover Letter 📄</button>
-                        <button onclick="aiAction(${job.id}, 'prep')" class="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-all uppercase tracking-widest text-center py-2">Prepare for Interview 🎯</button>
-                        <button onclick="deleteJob(${job.id})" class="text-[9px] font-bold text-slate-300 hover:text-rose-500 transition-all uppercase text-center mt-2">Delete Analysis 🗑️</button>
+                        <button onclick="aiAction(${id}, 'adapt')" class="btn-primary text-[10px] tracking-[0.1em] py-4">Optimize my CV ✨</button>
+                        <button onclick="aiAction(${id}, 'letter')" class="btn-outline text-[10px] tracking-[0.1em] py-3 uppercase">Generate Cover Letter 📄</button>
+                        <button onclick="aiAction(${id}, 'prep')" class="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-all uppercase tracking-widest text-center py-2">Prepare for Interview 🎯</button>
+                        <button onclick="deleteJob(${id})" class="text-[9px] font-bold text-slate-300 hover:text-rose-500 transition-all uppercase text-center mt-2">Delete Analysis 🗑️</button>
                     </div>
                 </div>
             `}).join('');
@@ -466,11 +511,24 @@
         function openModal(t) { document.getElementById('modalTitle').textContent = t; document.getElementById('aiModal').classList.remove('hidden'); document.getElementById('modalContent').textContent = "Consulting AI tactics..."; document.getElementById('copyBtn').classList.add('hidden'); }
         function closeModal() { document.getElementById('aiModal').classList.add('hidden'); }
         function showAIResponse(t) { document.getElementById('modalContent').textContent = t; document.getElementById('copyBtn').classList.remove('hidden'); }
-        document.getElementById('copyBtn').onclick = () => {
-            const temp = document.createElement("textarea");
-            temp.value = document.getElementById('modalContent').textContent;
-            document.body.appendChild(temp); temp.select(); document.execCommand('copy'); document.body.removeChild(temp);
-            const btn = document.getElementById('copyBtn'); const old = btn.textContent; btn.textContent = "COPIED!"; setTimeout(() => btn.textContent = old, 2000);
+        document.getElementById('copyBtn').onclick = async () => {
+            const btn = document.getElementById('copyBtn');
+            const text = document.getElementById('modalContent').textContent;
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch {
+                const temp = document.createElement('textarea');
+                temp.value = text;
+                temp.style.position = 'fixed';
+                temp.style.opacity = '0';
+                document.body.appendChild(temp);
+                temp.select();
+                document.execCommand('copy');
+                document.body.removeChild(temp);
+            }
+            const old = btn.textContent;
+            btn.textContent = "COPIED!";
+            setTimeout(() => btn.textContent = old, 2000);
         };
         function deleteJob(id) { jobsData = jobsData.filter(j => j.id !== id); updateUI(); }
         function exportCSV() {
